@@ -92,7 +92,7 @@ mod tests {
     use nalgebra::{DMatrix, DVector, Matrix, Dim};
     use nalgebra::base::storage::Storage;
 
-    use crate::regression::linear::{compute_cost, feature_normalize};
+    use crate::regression::linear::{compute_cost, feature_normalize, gradient_descent};
 
     fn read_sample_data() -> (DMatrix<f64>, DMatrix<f64>) {
         let mut test_data_dir = current_dir().unwrap();
@@ -174,6 +174,27 @@ mod tests {
         }
     }
 
+    fn is_descending(vec: &Vec<f64>) -> bool {
+        if vec.len() == 0 || vec.len() == 1 {
+            true
+        } else {
+            let mut is_desc = true;
+            let mut vec_iter = vec.iter();
+            let mut cur_v = vec_iter.next().unwrap();
+
+            for v in vec_iter {
+                if cur_v >= v {
+                    cur_v = v;
+                } else {
+                    is_desc = false;
+                    break;
+                }
+            }
+
+            is_desc
+        }
+    }
+
     #[test]
     fn cost_computes_expected_result() {
         let (features, _) = read_sample_data();
@@ -190,7 +211,6 @@ mod tests {
         let expected_value0 = 65591548106.45744;
 
         assert!(float_eq(r0, expected_value0));
-
 
         let theta1 = DVector::from_vec(vec![25.0, 26.0, 27.0]);
         let r1 = compute_cost(&features, &results, &theta1);
@@ -218,5 +238,64 @@ mod tests {
         let normalized_features = feature_normalize(&features);
 
         assert!(matrix_eq(&normalized_features, &expected_normalized_features));
+    }
+
+    #[test]
+    fn gradient_descent_computes_expected_thetas() {
+        let (features, _) = read_sample_data();
+        let results_col = features.column(2);
+
+        let mut results = DVector::from_element(features.nrows(), 0f64);
+        results.copy_from(&results_col);
+
+        let features: DMatrix<f64> = features.remove_column(2);
+        let features: DMatrix<f64> = feature_normalize(&features);
+        let features: DMatrix<f64> = features.insert_column(0, 1.0);
+
+        let theta0 = DVector::from_vec(vec![0.0, 0.0, 0.0]);
+        let new_theta0 = gradient_descent(&features, &results, &theta0, 0.1, 50);
+        let expected_theta0 = DVector::from_vec(vec![338658.24925, 104127.51560, -172.20533]);
+
+        assert!(matrix_eq(&new_theta0, &expected_theta0));
+
+        let theta1 = DVector::from_vec(vec![0.0, 0.0, 0.0]);
+        let new_theta1 = gradient_descent(&features, &results, &theta1, 0.01, 500);
+        let expected_theta1 = DVector::from_vec(vec![338175.98397, 103831.11737, 103.03073]);
+
+        assert!(matrix_eq(&new_theta1, &expected_theta1));
+
+        let theta2 = DVector::from_vec(vec![0.0, 0.0, 0.0]);
+        let new_theta2 = gradient_descent(&features, &results, &theta2, 0.001, 1000);
+        let expected_theta2 = DVector::from_vec(vec![215244.48211, 61233.08697, 20186.40938]);
+
+        assert!(matrix_eq(&new_theta2, &expected_theta2));
+    }
+
+    #[test]
+    fn cost_function_decreases_the_more_iterations_of_gradient_descent() {
+        let (features, _) = read_sample_data();
+        let results_col = features.column(2);
+
+        let mut results = DVector::from_element(features.nrows(), 0f64);
+        results.copy_from(&results_col);
+
+        let features: DMatrix<f64> = features.remove_column(2);
+        let features: DMatrix<f64> = feature_normalize(&features);
+        let features: DMatrix<f64> = features.insert_column(0, 1.0);
+
+        let theta = DVector::from_vec(vec![0.0, 0.0, 0.0]);
+
+        let iter_vals = (1..101).map(|n| 10 * n);
+
+        let mut cost_function_vals: Vec<f64> = Vec::new();
+
+        for i in iter_vals {
+            let new_theta = gradient_descent(&features, &results, &theta, 0.01, i);
+            let r0 = compute_cost(&features, &results, &new_theta);
+
+            cost_function_vals.insert(cost_function_vals.len(), r0);
+        }
+
+        assert!(is_descending(&cost_function_vals));
     }
 }

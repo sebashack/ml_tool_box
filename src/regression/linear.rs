@@ -23,7 +23,7 @@ pub fn gradient_descent(x: &DMatrix<f64>,
     let mut new_theta: DVector<f64> = DVector::from_element(theta_len, 0f64);
     new_theta.copy_from(theta);
 
-    for k in 0..num_iters {
+    for _ in 0..num_iters {
         let mut delta = DVector::from_element(theta_len, 0f64);
 
         for i in 0..m {
@@ -41,7 +41,7 @@ pub fn gradient_descent(x: &DMatrix<f64>,
     new_theta
 }
 
-pub fn featureNormalize(x: &DMatrix<f64>) -> DMatrix<f64> {
+pub fn feature_normalize(x: &DMatrix<f64>) -> DMatrix<f64> {
     let num_rows = x.nrows();
     let num_cols = x.ncols();
 
@@ -49,8 +49,8 @@ pub fn featureNormalize(x: &DMatrix<f64>) -> DMatrix<f64> {
 
     for i in 0..num_cols {
         let vals = x.column(i);
-        let mean = computeMxSliceMean(num_cols, &vals);
-        let std = computeMxSliceStd(num_cols, mean, &vals);
+        let mean = compute_mx_slice_mean(num_cols, &vals);
+        let std = compute_mx_slice_std(num_cols, mean, &vals);
 
         let new_col = DVector::from_fn(num_cols, |j, _| {
             (x.index((j, i)) - mean) / std
@@ -62,7 +62,7 @@ pub fn featureNormalize(x: &DMatrix<f64>) -> DMatrix<f64> {
     normalized_x
 }
 
-fn computeMxSliceMean(n: usize, x: &Matrix<f64, Dynamic, U1, SliceStorage<'_, f64, Dynamic, U1, U1, Dynamic>>) -> f64 {
+fn compute_mx_slice_mean(n: usize, x: &Matrix<f64, Dynamic, U1, SliceStorage<'_, f64, Dynamic, U1, U1, Dynamic>>) -> f64 {
     let mut sum: f64 = 0.0;
 
     for v in x.iter() {
@@ -72,7 +72,7 @@ fn computeMxSliceMean(n: usize, x: &Matrix<f64, Dynamic, U1, SliceStorage<'_, f6
     sum / (n as f64)
 }
 
-fn computeMxSliceStd(n: usize, mean: f64, x: &Matrix<f64, Dynamic, U1, SliceStorage<'_, f64, Dynamic, U1, U1, Dynamic>>) -> f64 {
+fn compute_mx_slice_std(n: usize, mean: f64, x: &Matrix<f64, Dynamic, U1, SliceStorage<'_, f64, Dynamic, U1, U1, Dynamic>>) -> f64 {
     let mut sum_of_squares: f64 = 0.0;
 
     for v in x.iter() {
@@ -104,11 +104,11 @@ mod tests {
         feature_normalize_file_path.push("lrFeatureNormalize.csv");
 
 
-        let mut linear_regression_data_reader = ReaderBuilder::new()
+        let linear_regression_data_reader = ReaderBuilder::new()
             .has_headers(false)
             .from_path(linear_regresion_file_path.as_path()).unwrap();
 
-        let mut feature_normalize_data_reader = ReaderBuilder::new()
+        let feature_normalize_data_reader = ReaderBuilder::new()
             .has_headers(false)
             .delimiter(b',')
             .from_path(feature_normalize_file_path.as_path()).unwrap();
@@ -146,8 +146,12 @@ mod tests {
         (features, normalized_features)
     }
 
+    fn float_eq(x0: f64, x1: f64) -> bool {
+        (x0 - x1).abs() < 0.0001
+    }
+
     #[test]
-    fn cost_function_correctly_computes() {
+    fn cost_computes_expected_result() {
         let (features, _) = read_sample_data();
         let results_col = features.column(2);
 
@@ -156,11 +160,30 @@ mod tests {
 
         let features: DMatrix<f64> = features.remove_column(2);
         let features: DMatrix<f64> = features.insert_column(0, 1.0);
-        let theta = DVector::from_vec(vec![0.0, 0.0, 0.0]);
 
-        let r = compute_cost(&features, &results, &theta);
-        let expected_valued = 65591548106.45744;
+        let theta0 = DVector::from_vec(vec![0.0, 0.0, 0.0]);
+        let r0 = compute_cost(&features, &results, &theta0);
+        let expected_value0 = 65591548106.45744;
 
-        assert_eq!(r, expected_valued);
+        assert!(float_eq(r0, expected_value0));
+
+
+        let theta1 = DVector::from_vec(vec![25.0, 26.0, 27.0]);
+        let r1 = compute_cost(&features, &results, &theta1);
+        let expected_value1 = 47251185844.64893;
+
+        assert!(float_eq(r1, expected_value1));
+
+        let theta2 = DVector::from_vec(vec![1500.0, 227.0, 230.0]);
+        let r2 = compute_cost(&features, &results, &theta2);
+        let expected_value2 = 11433546085.01064;
+
+        assert!(float_eq(r2, expected_value2));
+
+        let theta3 = DVector::from_vec(vec![-15.03, -27.123, -59.675]);
+        let r3 = compute_cost(&features, &results, &theta3);
+        let expected_value3 = 88102482793.02190;
+
+        assert!(float_eq(r3, expected_value3));
     }
 }

@@ -49,10 +49,10 @@ pub fn feature_normalize(x: &DMatrix<f64>) -> DMatrix<f64> {
 
     for i in 0..num_cols {
         let vals = x.column(i);
-        let mean = compute_mx_slice_mean(num_cols, &vals);
-        let std = compute_mx_slice_std(num_cols, mean, &vals);
+        let mean = compute_mx_slice_mean(num_rows, &vals);
+        let std = compute_mx_slice_std(num_rows, mean, &vals);
 
-        let new_col = DVector::from_fn(num_cols, |j, _| {
+        let new_col = DVector::from_fn(num_rows, |j, _| {
             (x.index((j, i)) - mean) / std
         });
 
@@ -89,9 +89,10 @@ mod tests {
 
     use std::env::current_dir;
     use csv::{ReaderBuilder, StringRecord};
-    use nalgebra::{DMatrix, DVector};
+    use nalgebra::{DMatrix, DVector, Matrix, Dim};
+    use nalgebra::base::storage::Storage;
 
-    use crate::regression::linear::compute_cost;
+    use crate::regression::linear::{compute_cost, feature_normalize};
 
     fn read_sample_data() -> (DMatrix<f64>, DMatrix<f64>) {
         let mut test_data_dir = current_dir().unwrap();
@@ -150,6 +151,29 @@ mod tests {
         (x0 - x1).abs() < 0.0001
     }
 
+    fn matrix_eq<R2, C2, SB>(m0: &Matrix<f64, R2, C2, SB>, m1: &Matrix<f64, R2, C2, SB>) -> bool
+    where
+        R2: Dim,
+        C2: Dim,
+        SB: Storage<f64, R2, C2>
+    {
+        if m0.len() != m1.len() {
+            false
+        } else {
+            let mut m1_iter = m1.iter();
+            let mut are_equal = true;
+
+            for v0 in m0.iter() {
+                if !float_eq(*v0, *(m1_iter.next().unwrap())) {
+                    are_equal = false;
+                    break;
+                }
+            }
+
+            are_equal
+        }
+    }
+
     #[test]
     fn cost_computes_expected_result() {
         let (features, _) = read_sample_data();
@@ -185,5 +209,14 @@ mod tests {
         let expected_value3 = 88102482793.02190;
 
         assert!(float_eq(r3, expected_value3));
+    }
+
+    #[test]
+    fn features_normalize_computes_expected_matrix() {
+        let (features, expected_normalized_features) = read_sample_data();
+        let features: DMatrix<f64> = features.remove_column(2);
+        let normalized_features = feature_normalize(&features);
+
+        assert!(matrix_eq(&normalized_features, &expected_normalized_features));
     }
 }

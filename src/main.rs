@@ -2,6 +2,8 @@ use ml_tool_box::regression::linear::{compute_cost, gradient_descent, featureNor
 
 use nalgebra::{DMatrix, DVector};
 
+use std::env::current_dir;
+
 fn main() {
     let x = DMatrix::from_iterator(3, 3, vec![1000.0, 400.0, 70.0,
                                               2000.0, 500.0, 80.0,
@@ -11,5 +13,10 @@ fn main() {
 
     let normalized_x = featureNormalize(&x);
 
-    println!("Result {}", normalized_x);
+    let mut cur_dir = current_dir().unwrap();
+
+    let strv = "-0.49915651";
+    let val: f64 = strv.parse().unwrap();
+
+    println!("Dir {}", val);
 }

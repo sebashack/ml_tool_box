@@ -17,25 +17,22 @@ pub fn gradient_descent(x: &DMatrix<f64>,
                         alpha: f64,
                         num_iters: u32) -> DVector<f64> {
     let m = y.len();
-    let theta_len = theta.len();
-    let x_tr = x.transpose();
+    let mut new_theta: DVector<f64> = DVector::<f64>::zeros(theta.len());
 
-    let mut new_theta: DVector<f64> = DVector::from_element(theta_len, 0f64);
     new_theta.copy_from(theta);
 
+    let alpha_div_m = alpha / (m as f64);
+
     for _ in 0..num_iters {
-        let mut delta = DVector::from_element(theta_len, 0f64);
+        unsafe {
+            let mut x_by_theta = DVector::new_uninitialized(x.nrows());
 
-        for i in 0..m {
-            let x_vals = x_tr.column(i);
-            let v = ((new_theta.transpose() * x_vals).index(0) - *(y.index(i))) * x_vals;
+            x.mul_to(&new_theta, &mut x_by_theta);
 
-            delta = delta + v;
+            let delta = x.transpose() * (x_by_theta - y);
+
+            new_theta = new_theta - (alpha_div_m * delta);
         }
-
-        delta = delta / (m as f64);
-
-        new_theta = new_theta - (alpha * delta);
     }
 
     new_theta
